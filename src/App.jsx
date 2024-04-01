@@ -6,7 +6,7 @@ function App() {
 
   return (
     <>
-      <Pokemon />
+      <Pokemon itemsPerPage={18} />
     </>
   )
 }

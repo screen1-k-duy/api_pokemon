@@ -1,18 +1,41 @@
 import axios from "axios";
 import { Fragment, useEffect, useState } from "react";
+import ReactPaginate from "react-paginate";
 import CardPokemon from "./CardPokemon";
+import InputSearch from "./InputSearch";
+import PopupVS from "./PopupVS";
+import SortName from "./SortName";
+
 let i = 0;
-const Pokemon = () => {
+// const typePokemon = [
+//   "bug",
+//   "poison",
+//   "normal",
+//   "water",
+//   "flying",
+//   "fire",
+//   "grass",
+// ];
+const Pokemon = ({ itemsPerPage }) => {
   const [pokemons, setPokemons] = useState([]);
   const [current, setCurrent] = useState([]);
+  const [limit, setLimit] = useState(18);
+  const [search, setSearch] = useState("");
+
+  const [page, setPage] = useState(0);
+  const [countPage, setCountPage] = useState(0);
+  const pageCount = Math.ceil(countPage / itemsPerPage);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(
-          "https://pokeapi.co/api/v2/pokemon?limit=18"
+          `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${
+            page * limit
+          }`
         );
-        console.log("res", res);
+        // console.log("res", res);
+
         setPokemons(res.data.results);
       } catch (err) {
         console.error(`Error: ${err}`);
@@ -20,55 +43,103 @@ const Pokemon = () => {
     };
 
     fetchData();
-  }, []);
-  //   console.log("Pokemon", i++);
-  console.log("sdfsdf", pokemons);
+  }, [limit, page]);
 
-  console.log("current current", current);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await axios.get("https://pokeapi.co/api/v2/pokemon/");
+        setCountPage(res.data.count);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // const handleClickMore = () => {
+  //   setPage(limit*page);
+  // };
+
+  const handlePageClick = (event) => {
+    setPage(event.selected);
+  };
+
+  const handleSortName = () => {
+    const isSorted = [...pokemons].sort(function (a, b) {
+      let x = a.name.toLowerCase(),
+        y = b.name.toLowerCase();
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
+    if (isSorted) {
+      setPokemons(isSorted);
+    }
+  };
+  console.log("handleSortName", pokemons);
+
   return (
     <>
-      <div className="relative">
+      <div className="relative overflow-hidden">
+        <div className="flex justify-center space-x-2">
+          <InputSearch setSearch={setSearch} />
+          <SortName onSortName={handleSortName} />
+        </div>
         <div className="container mx-auto">
           <div className="text-red-500 text-xl text-center">Pokemon</div>
-          <ul className="grid grid-cols-6  gap-4 ">
-            {pokemons.map((item, index) => (
-              <Fragment key={index}>
-                <CardPokemon
-                  id={index}
-                  setCurrent={setCurrent}
-                  current={current}
-                />
-              </Fragment>
-            ))}
-          </ul>
-        </div>
-        {current.length >= 2 && (
-          <ul className=" absolute top-0 left-0 right-0 bottom-0 bg-slate-500/80 flex justify-center items-center gap-x-4">
-            {current.map((item, index) => (
-              <>
-                <li
-                  key={item.id}
-                  className="p-6 bg-yellow-100 rounded-[10px] w-[300px] h-[400px]  flex justify-center items-center"
-                >
-                  <div className="flex justify-center flex-col items-center">
-                    <h3 className="font-bold capitalize">{item.name}</h3>
-                    <img
-                      className="animate-[bounce_2s_ease-in-out]"
-                      src={item.sprites?.other.home.front_shiny}
-                      alt={item.name}
+          <ul className="grid grid-cols-2 gap-2  md:gap-4 md:grid-cols-6">
+            {pokemons
+              .filter((item) => {
+                return search.toLowerCase() === ""
+                  ? item
+                  : item.name.toLowerCase().includes(search);
+              })
+              .map((item, index) => {
+                let pokemonId = item.url.match(/\/\d+/)[0].slice(1);
+                return (
+                  <Fragment key={pokemonId}>
+                    <CardPokemon
+                      id={pokemonId}
+                      setCurrent={setCurrent}
+                      // pokemons={pokemons}
+                      current={current}
+                      name={item.name}
                     />
-                    <div className="flex space-x-2">
-                      {item.types?.map((type, index) => (
-                        <p key={index}>{type.type.name}</p>
-                      ))}
-                    </div>
-                  </div>
-                </li>
-                {index === 0 && <img src="src/assets/vs.png" alt="" className="h-[80%] animate-[ping_3s_ease-in-out_infinite]" />}
-              </>
-            ))}
+                  </Fragment>
+                );
+              })}
           </ul>
-        )}
+          {/* <div className="flex justify-center py-8">
+            <button
+              className="px-3 py-4 bg-lime-400 rounded-sm font-bold hover:bg-red-300 "
+              onClick={handleClickMore}
+            >
+              Learn More
+            </button>
+          </div> */}
+          {/* <Items currentItems={currentItems} /> */}
+          <ReactPaginate
+            breakLabel="..."
+            nextLabel="next"
+            onPageChange={handlePageClick}
+            pageRangeDisplayed={2}
+            marginPagesDisplayed={1}
+            pageCount={pageCount}
+            previousLabel="previous"
+            renderOnZeroPageCount={null}
+            className="flex justify-center space-x-2 py-8"
+            pageClassName="testpage"
+            pageLinkClassName="px-3 py-4 hover:font-bold  "
+            currentPage={page}
+            previousClassName={page === 0 ? "hidden" : "block"}
+            nextClassName={page + 1 === pageCount ? "hidden" : "block"}
+            previousLinkClassName="px-3 py-4 bg-lime-400 rounded-sm font-bold hover:bg-red-300 "
+            nextLinkClassName="px-3 py-4 bg-lime-400 rounded-sm font-bold hover:bg-red-300"
+            activeClassName="font-bold testselec"
+            prevRel="testprevRel"
+            prevPageRel="testprevPageRel"
+          />
+        </div>
+        <PopupVS current={current} setCurrent={setCurrent} />
       </div>
     </>
   );
